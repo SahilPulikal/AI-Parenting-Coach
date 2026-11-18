@@ -30,6 +30,11 @@ export interface SafetyResponse {
 
 export type CoachReply = CoachingResponse | SafetyResponse;
 
+/** A message as shown in the UI and saved in the browser's localStorage. */
+export type ChatMessage =
+  | { id: string; role: "user"; content: string }
+  | { id: string; role: "coach"; reply: CoachReply };
+
 /** Message shape sent from the browser to /api/chat. */
 export interface ApiMessage {
   role: "user" | "assistant";

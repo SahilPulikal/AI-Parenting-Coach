@@ -1,8 +1,4 @@
-import type { CoachReply, CoachingResponse, SafetyResponse } from "@/lib/types";
-
-export type ChatMessage =
-  | { id: string; role: "user"; content: string }
-  | { id: string; role: "coach"; reply: CoachReply };
+import type { ChatMessage, CoachingResponse, SafetyResponse } from "@/lib/types";
 
 // Labels are shown in the reply's own language so an Urdu reply has no stray English headings.
 const LABELS = {
@@ -15,12 +11,12 @@ function CoachingCard({ reply }: { reply: CoachingResponse }) {
     <div
       dir={reply.language === "ur" ? "rtl" : "ltr"}
       lang={reply.language}
-      className="max-w-[92%] space-y-3 rounded-2xl rounded-es-sm bg-white p-4 text-start shadow-sm ring-1 ring-stone-200"
+      className="max-w-[92%] space-y-3 rounded-2xl rounded-es-sm bg-surface p-4 text-start shadow-sm ring-1 ring-stone-200"
     >
       <p className="font-medium">{reply.acknowledgement}</p>
       <p className="text-stone-600">{reply.understanding}</p>
       <div>
-        <p className="mb-1 text-sm font-semibold text-teal-800">
+        <p className="mb-1 text-sm font-semibold text-teal-800 dark:text-teal-300">
           {LABELS[reply.language].steps}
         </p>
         <ol className="list-decimal space-y-1 ps-5">

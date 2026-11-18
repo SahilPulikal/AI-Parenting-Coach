@@ -16,6 +16,21 @@ export const coachingSchema = z.object({
   follow_up: z.object({ question: text(300) }),
 });
 
+/**
+ * Validates a safety reply read back from localStorage. Safety replies are static
+ * templates written by the server, so this only guards against corrupted or edited data.
+ */
+export const safetyReplySchema = z.object({
+  type: z.enum(["crisis", "uncertain", "screening_unavailable"]),
+  language: languageSchema,
+  severity: z.literal("high").optional(),
+  message: text(1000),
+  actions: z.array(text(1000)).max(10),
+  follow_up: z.string().trim().max(1000),
+});
+
+export const coachReplySchema = z.union([coachingSchema, safetyReplySchema]);
+
 /** Request limits. The server never trusts the client to enforce these. */
 export const MAX_MESSAGES = 12;
 export const MAX_ASSISTANT_CHARS = 4000; // assistant turns are echoed replies, so longer

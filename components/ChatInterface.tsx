@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import MessageBubble, { type ChatMessage } from "./MessageBubble";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import MessageBubble from "./MessageBubble";
 import {
   MAX_MESSAGE_CHARS,
   type ApiMessage,
+  type ChatMessage,
   type ChatRequestBody,
   type CoachReply,
 } from "@/lib/types";
@@ -42,28 +43,48 @@ function isCoachReply(data: unknown): data is CoachReply {
   );
 }
 
-export default function ChatInterface() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+interface Props {
+  /** Starting state for this conversation. The parent remounts this component (via `key`) to switch. */
+  initialMessages: ChatMessage[];
+  initialSafetyLocked: boolean;
+  /** Called whenever the messages or safety lock change, so the parent can save them. */
+  onChange: (messages: ChatMessage[], safetyLocked: boolean) => void;
+  onBusyChange: (busy: boolean) => void;
+}
+
+export default function ChatInterface({
+  initialMessages,
+  initialSafetyLocked,
+  onChange,
+  onBusyChange,
+}: Props) {
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Once any safety response has been shown, ordinary coaching stays off for this conversation.
-  const [safetyLocked, setSafetyLocked] = useState(false);
+  // A restored conversation that contains a safety reply starts locked.
+  const [safetyLocked, setSafetyLocked] = useState(initialSafetyLocked);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const initial = useRef({ messages: initialMessages, locked: initialSafetyLocked });
+
+  const reportChange = useEffectEvent(onChange);
+  const reportBusy = useEffectEvent(onBusyChange);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, loading]);
 
-  function newConversation() {
-    setMessages([]);
-    setInput("");
-    setError(null);
-    setSafetyLocked(false);
-    setLoading(false);
-    inputRef.current?.focus();
-  }
+  // Tell the parent about real changes only, so merely opening a conversation never re-saves it.
+  useEffect(() => {
+    if (messages === initial.current.messages && safetyLocked === initial.current.locked) return;
+    reportChange(messages, safetyLocked);
+  }, [messages, safetyLocked]);
+
+  useEffect(() => {
+    reportBusy(loading);
+  }, [loading]);
 
   async function send(text: string) {
     const content = text.trim();
@@ -119,30 +140,22 @@ export default function ChatInterface() {
   const empty = messages.length === 0;
 
   return (
-    <div className="flex flex-1 flex-col gap-3">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-teal-900">Safe AI Parenting Coach</h1>
-          <p className="text-sm text-stone-600">
-            Short, practical, non-judgmental parenting ideas, in English or اردو.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={newConversation}
-          className="shrink-0 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-teal-700"
-        >
-          New conversation
-        </button>
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <header className="px-4 sm:px-8">
+        {/* The visible app name is in the sidebar / top bar, so the heading is for screen readers only. */}
+        <h1 className="sr-only">AI Parenting Coach</h1>
+        <p className="text-sm text-stone-600">
+          Short, practical, non-judgmental parenting ideas, in English or اردو.
+        </p>
       </header>
 
       <div
         role="log"
         aria-live="polite"
         aria-label="Conversation"
-        className="flex min-h-[50vh] flex-1 flex-col gap-3 overflow-y-auto rounded-2xl bg-stone-100/70 p-3 sm:p-4"
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-stone-100/70 px-4 py-3 sm:px-8 sm:py-4"
       >
-        <section className="rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-stone-200">
+        <section className="rounded-2xl bg-surface p-4 text-sm shadow-sm ring-1 ring-stone-200">
           <p className="font-semibold">Welcome. Tell me what is on your mind.</p>
           <p className="mt-2 text-stone-700">
             I can offer a few calm, practical ideas for everyday parenting concerns such as
@@ -164,7 +177,7 @@ export default function ChatInterface() {
                 dir="auto"
                 onClick={() => send(sample)}
                 disabled={loading}
-                className="rounded-full border border-teal-700/30 bg-white px-3 py-1.5 text-start text-sm text-teal-900 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-teal-700 disabled:opacity-50"
+                className="rounded-full border border-teal-700/30 bg-surface px-3 py-1.5 text-start text-sm text-teal-900 hover:bg-teal-50 focus-visible:outline-2 focus-visible:outline-teal-700 disabled:opacity-50"
               >
                 {sample}
               </button>
@@ -178,7 +191,7 @@ export default function ChatInterface() {
 
         {loading && (
           <div className="flex justify-start" role="status">
-            <p className="rounded-2xl bg-white px-4 py-2 text-sm text-stone-600 shadow-sm ring-1 ring-stone-200">
+            <p className="rounded-2xl bg-surface px-4 py-2 text-sm text-stone-600 shadow-sm ring-1 ring-stone-200">
               <span className="inline-flex gap-1" aria-hidden="true">
                 <span className="size-1.5 animate-bounce rounded-full bg-teal-600" />
                 <span className="size-1.5 animate-bounce rounded-full bg-teal-600 [animation-delay:150ms]" />
@@ -192,13 +205,13 @@ export default function ChatInterface() {
       </div>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200">
+        <p role="alert" className="mx-4 rounded-lg bg-red-50 sm:mx-8 px-3 py-2 text-sm text-red-800 ring-1 dark:text-red-200 ring-red-200">
           {error}
         </p>
       )}
 
       {safetyLocked ? (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">
+        <p className="mx-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200 sm:mx-8">
           Coaching is paused for this conversation. Please use the support options above. You
           can start a new conversation at any time.
         </p>
@@ -208,7 +221,7 @@ export default function ChatInterface() {
             e.preventDefault();
             send(input);
           }}
-          className="flex items-end gap-2"
+          className="flex items-end gap-2 px-4 sm:px-8"
         >
           <label htmlFor="concern" className="sr-only">
             Describe your parenting concern
@@ -228,7 +241,7 @@ export default function ChatInterface() {
               }
             }}
             placeholder="Describe your concern in English or Urdu…"
-            className="min-h-12 flex-1 resize-none rounded-xl border border-stone-300 bg-white px-3 py-2 focus-visible:outline-2 focus-visible:outline-teal-700"
+            className="min-h-12 flex-1 resize-none rounded-xl border border-stone-300 bg-surface px-3 py-2 text-foreground placeholder:text-stone-500 focus-visible:outline-2 focus-visible:outline-teal-700"
           />
           <button
             type="submit"
