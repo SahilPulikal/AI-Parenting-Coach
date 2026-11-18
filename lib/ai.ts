@@ -40,19 +40,29 @@ export interface ModelCall {
   messages: ApiMessage[];
   maxTokens: number;
   effort: "low" | "medium" | "high";
+  /** Overrides the client default (30 s). Safety screening uses a shorter limit. */
+  timeoutMs?: number;
+  /** Overrides the client default of 1 retry. */
+  maxRetries?: number;
 }
 
 /** Makes one model request and returns its text. Throws AIError on any failure. */
 export async function callModel(call: ModelCall): Promise<string> {
   let response: Anthropic.Message;
   try {
-    response = await getClient().messages.create({
-      model: call.model,
-      max_tokens: call.maxTokens, // thinking tokens count toward this, so keep it generous
-      system: call.system,
-      messages: call.messages,
-      output_config: { effort: call.effort },
-    });
+    response = await getClient().messages.create(
+      {
+        model: call.model,
+        max_tokens: call.maxTokens, // thinking tokens count toward this, so keep it generous
+        system: call.system,
+        messages: call.messages,
+        output_config: { effort: call.effort },
+      },
+      {
+        ...(call.timeoutMs !== undefined && { timeout: call.timeoutMs }),
+        ...(call.maxRetries !== undefined && { maxRetries: call.maxRetries }),
+      },
+    );
   } catch (err) {
     if (err instanceof AIError) throw err;
     const status = err instanceof Anthropic.APIError ? err.status : undefined;

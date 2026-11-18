@@ -33,17 +33,20 @@ function CoachingCard({ reply }: { reply: CoachingResponse }) {
   );
 }
 
-function SafetyCard({ reply }: { reply: SafetyResponse }) {
+/** `pinned` is the copy kept above the input while a conversation is locked. */
+export function SafetyCard({ reply, pinned = false }: { reply: SafetyResponse; pinned?: boolean }) {
   const isCrisis = reply.type === "crisis";
   const tone = isCrisis
     ? "bg-red-50 ring-red-300 text-red-950"
     : "bg-amber-50 ring-amber-300 text-amber-950";
   return (
     <div
-      role="alert"
+      // The in-chat card announces itself once; the pinned copy is a labelled region instead.
+      role={pinned ? "region" : "alert"}
+      aria-label={pinned ? "Support options" : undefined}
       dir={reply.language === "ur" ? "rtl" : "ltr"}
       lang={reply.language}
-      className={`max-w-[92%] space-y-3 rounded-2xl rounded-es-sm p-4 text-start ring-1 ${tone}`}
+      className={`${pinned ? "w-full" : "max-w-[92%]"} space-y-3 rounded-2xl rounded-es-sm p-4 text-start ring-1 ${tone}`}
     >
       <p className="font-semibold">{reply.message}</p>
       <ul className="list-disc space-y-1 ps-5">

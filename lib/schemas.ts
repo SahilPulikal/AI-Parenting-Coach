@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_MESSAGE_CHARS } from "./types";
+import { CRISIS_CATEGORIES, MAX_MESSAGE_CHARS } from "./types";
 
 export const languageSchema = z.enum(["en", "ur"]);
 
@@ -30,6 +30,30 @@ export const safetyReplySchema = z.object({
 });
 
 export const coachReplySchema = z.union([coachingSchema, safetyReplySchema]);
+
+/**
+ * Strictly validates the safety classifier's output. Extra fields, unknown categories and
+ * contradictory combinations (e.g. "safe" with a crisis category) are all rejected, and a
+ * rejected result is treated as "screening unavailable", never as safe.
+ */
+export const classifierSchema = z
+  .object({
+    verdict: z.enum(["safe", "crisis", "uncertain"]),
+    category: z.enum(["none", "medical_concern", ...CRISIS_CATEGORIES]),
+    confidence: z.enum(["high", "medium", "low"]),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    const crisisCategory = (CRISIS_CATEGORIES as readonly string[]).includes(value.category);
+    if (value.verdict === "safe" && crisisCategory) {
+      ctx.addIssue({ code: "custom", message: "safe verdict with a crisis category" });
+    }
+    if (value.verdict === "crisis" && !crisisCategory) {
+      ctx.addIssue({ code: "custom", message: "crisis verdict without a crisis category" });
+    }
+  });
+
+export type ClassifierResult = z.infer<typeof classifierSchema>;
 
 /** Request limits. The server never trusts the client to enforce these. */
 export const MAX_MESSAGES = 12;

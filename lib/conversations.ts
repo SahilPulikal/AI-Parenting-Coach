@@ -31,9 +31,14 @@ const storedConversationSchema = z.object({
   safetyLocked: z.boolean().optional(),
 });
 
-/** True when any coach message is a safety reply (crisis, uncertain or screening unavailable). */
+/**
+ * True when a coach message is a crisis or "uncertain" reply: these lock the conversation.
+ * A "screening_unavailable" reply does not, because nothing was judged unsafe.
+ */
 export function hasSafetyReply(messages: ChatMessage[]): boolean {
-  return messages.some((m) => m.role === "coach" && m.reply.type !== "coaching");
+  return messages.some(
+    (m) => m.role === "coach" && (m.reply.type === "crisis" || m.reply.type === "uncertain"),
+  );
 }
 
 /** Title from the first parent message: whitespace collapsed, cut at a character boundary. */

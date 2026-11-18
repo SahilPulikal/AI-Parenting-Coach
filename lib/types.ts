@@ -30,6 +30,16 @@ export interface SafetyResponse {
 
 export type CoachReply = CoachingResponse | SafetyResponse;
 
+/** Reasons that stop ordinary coaching and trigger a predefined crisis response. */
+export const CRISIS_CATEGORIES = [
+  "medical_emergency",
+  "self_harm",
+  "child_abuse",
+  "domestic_violence",
+  "immediate_danger",
+] as const;
+export type CrisisCategory = (typeof CRISIS_CATEGORIES)[number];
+
 /** A message as shown in the UI and saved in the browser's localStorage. */
 export type ChatMessage =
   | { id: string; role: "user"; content: string }

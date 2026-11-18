@@ -1,5 +1,12 @@
 import { AIError, generateCoaching } from "@/lib/ai";
 import { detectLanguage } from "@/lib/language";
+import { findLock, recentUserMessages, screenMessages } from "@/lib/safety";
+import {
+  crisisReply,
+  medicalReferralReply,
+  uncertainReply,
+  unavailableReply,
+} from "@/lib/safety-responses";
 import { chatRequestSchema } from "@/lib/schemas";
 import type { ApiErrorBody } from "@/lib/types";
 
@@ -34,15 +41,38 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return error(400, "Please enter a message of up to 1000 characters.");
   }
-  const { messages } = parsed.data;
+  const { messages, safetyLocked } = parsed.data;
+  const latest = messages.at(-1)!.content;
+  const language = detectLanguage(latest);
 
-  // 2. PHASE 4: safety screening goes here and must run before any coaching call.
-  //    Until then this route does NOT screen for crises. Do not use it for real concerns.
+  // 2. Safety gate. Nothing below this point runs for a locked, crisis, uncertain or
+  //    unscreened message, so ordinary coaching can never answer one.
+  //    a) Server-side lock, derived from the submitted history, not from the client's flag.
+  const lock = findLock(messages, safetyLocked === true);
+  if (lock) return Response.json(lock);
+
+  //    b) Screen the parent's last 3 messages: deterministic rules, then the model classifier.
+  const screening = await screenMessages(recentUserMessages(messages));
+  switch (screening.outcome) {
+    case "crisis":
+      return Response.json(crisisReply(screening.category, screening.language));
+    case "uncertain":
+      return Response.json(uncertainReply(language));
+    case "unavailable":
+      console.error(`[chat] safety screening unavailable: ${screening.reason}`);
+      if (screening.reason === "config") {
+        return error(500, "The coach isn't set up correctly yet. Please contact the site owner.");
+      }
+      return Response.json(unavailableReply(language));
+    case "safe":
+      // Everyday health worries get a fixed referral to a professional, never model-written advice.
+      if (screening.medical) return Response.json(medicalReferralReply(language));
+      break;
+  }
 
   // 3. Ordinary coaching, in the language of the parent's latest message.
-  const latest = messages.at(-1)!.content;
   try {
-    const reply = await generateCoaching(messages, detectLanguage(latest));
+    const reply = await generateCoaching(messages, language);
     return Response.json(reply);
   } catch (err) {
     // Log only the kind and status, never message content or model output.

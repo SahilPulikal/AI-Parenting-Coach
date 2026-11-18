@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import MessageBubble from "./MessageBubble";
+import MessageBubble, { SafetyCard } from "./MessageBubble";
 import {
   MAX_MESSAGE_CHARS,
   type ApiMessage,
@@ -122,7 +122,9 @@ export default function ChatInterface({
           ...prev,
           { id: crypto.randomUUID(), role: "coach", reply: data },
         ]);
-        if (data.type !== "coaching") setSafetyLocked(true);
+        // A crisis or "uncertain" reply locks the conversation. A failed safety check does not:
+        // nothing was judged unsafe, and the next message is screened again.
+        if (data.type === "crisis" || data.type === "uncertain") setSafetyLocked(true);
       } else {
         const message = (data as { message?: unknown } | null)?.message;
         throw new Error(typeof message === "string" ? message : GENERIC_ERROR);
@@ -138,6 +140,11 @@ export default function ChatInterface({
   }
 
   const empty = messages.length === 0;
+  // The latest crisis or "uncertain" reply, kept visible once the conversation is locked.
+  const pinnedSafetyReply = messages.findLast(
+    (m) => m.role === "coach" && (m.reply.type === "crisis" || m.reply.type === "uncertain"),
+  );
+  const pinned = pinnedSafetyReply?.role === "coach" && pinnedSafetyReply.reply.type !== "coaching" ? pinnedSafetyReply.reply : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -211,10 +218,18 @@ export default function ChatInterface({
       )}
 
       {safetyLocked ? (
-        <p className="mx-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200 sm:mx-8">
-          Coaching is paused for this conversation. Please use the support options above. You
-          can start a new conversation at any time.
-        </p>
+        <div className="mx-4 space-y-2 sm:mx-8">
+          {/* The guidance stays pinned here so it cannot scroll out of view. */}
+          {pinned && (
+            <div className="max-h-[40vh] overflow-y-auto rounded-2xl">
+              <SafetyCard reply={pinned} pinned />
+            </div>
+          )}
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">
+            Coaching is paused for this conversation. You can start a new conversation at any
+            time from the sidebar.
+          </p>
+        </div>
       ) : (
         <form
           onSubmit={(e) => {

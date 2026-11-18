@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/ai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ai")>()),
   generateCoaching: vi.fn(),
+  callModel: vi.fn(), // the safety classifier
 }));
 
-import { AIError, generateCoaching } from "@/lib/ai";
+import { AIError, callModel, generateCoaching } from "@/lib/ai";
 import { POST } from "@/app/api/chat/route";
 
 const mocked = vi.mocked(generateCoaching);
@@ -34,6 +35,10 @@ const userBody = (content: string) => ({ messages: [{ role: "user", content }] }
 
 beforeEach(() => {
   mocked.mockReset();
+  // By default the safety classifier says the message is safe. Safety behaviour has its own test file.
+  vi.mocked(callModel).mockReset().mockResolvedValue(
+    JSON.stringify({ verdict: "safe", category: "none", confidence: "high" }),
+  );
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
