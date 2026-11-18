@@ -122,6 +122,12 @@ export async function screenMessages(
  * "uncertain" replies. A client that merely claims safetyLocked: true is also locked (that can
  * only make the server more careful). A client claiming false changes nothing.
  *
+ * LIMITATION (by design, there is no database): the server keeps no state, so it only knows
+ * what the client sends. A deliberately modified client can drop the earlier turns that hold
+ * the safety reply and keep sending harmless messages; once the last 3 parent messages
+ * no longer mention the crisis, the server cannot know about it. This lock protects honest
+ * clients and accidental loss of the flag. It is NOT tamper-proof.
+ *
  * Returns the safety reply to show again, or null when the conversation is not locked.
  * ("screening_unavailable" replies never lock: nothing was judged unsafe, and the next
  * message is screened again together with the earlier one.)

@@ -1,6 +1,6 @@
 import { AIError, generateCoaching } from "@/lib/ai";
 import { detectLanguage } from "@/lib/language";
-import { findLock, recentUserMessages, screenMessages } from "@/lib/safety";
+import { findLock, recentUserMessages, screenMessages, type ScreenResult } from "@/lib/safety";
 import {
   crisisReply,
   medicalReferralReply,
@@ -52,25 +52,37 @@ export async function POST(request: Request) {
   if (lock) return Response.json(lock);
 
   //    b) Screen the parent's last 3 messages: deterministic rules, then the model classifier.
-  const screening = await screenMessages(recentUserMessages(messages));
-  switch (screening.outcome) {
-    case "crisis":
-      return Response.json(crisisReply(screening.category, screening.language));
-    case "uncertain":
-      return Response.json(uncertainReply(language));
-    case "unavailable":
-      console.error(`[chat] safety screening unavailable: ${screening.reason}`);
-      if (screening.reason === "config") {
-        return error(500, "The coach isn't set up correctly yet. Please contact the site owner.");
-      }
-      return Response.json(unavailableReply(language));
-    case "safe":
-      // Everyday health worries get a fixed referral to a professional, never model-written advice.
-      if (screening.medical) return Response.json(medicalReferralReply(language));
-      break;
+  //       An unexpected failure here is treated like an unavailable safety check, never as "safe".
+  let screening: ScreenResult;
+  try {
+    screening = await screenMessages(recentUserMessages(messages));
+  } catch {
+    screening = { outcome: "unavailable", reason: "failure" };
   }
 
-  // 3. Ordinary coaching, in the language of the parent's latest message.
+  if (screening.outcome === "crisis") {
+    return Response.json(crisisReply(screening.category, screening.language));
+  }
+  if (screening.outcome === "uncertain") {
+    return Response.json(uncertainReply(language));
+  }
+  if (screening.outcome === "unavailable") {
+    console.error(`[chat] safety screening unavailable: ${screening.reason}`);
+    if (screening.reason === "config") {
+      return error(500, "The coach isn't set up correctly yet. Please contact the site owner.");
+    }
+    return Response.json(unavailableReply(language));
+  }
+  // Fail closed: from here on only an explicit "safe" outcome may continue. Anything else,
+  // including a result shape this code does not know about, gets the cautious reply.
+  if (screening.outcome !== "safe") {
+    return Response.json(uncertainReply(language));
+  }
+  // Everyday health worries get a fixed referral to a professional, never model-written advice.
+  if (screening.medical) return Response.json(medicalReferralReply(language));
+
+  // 3. Ordinary coaching, in the language of the parent's latest message. This is the ONLY place
+  //    in the app that calls the coaching model, and it is reachable only after the gate above.
   try {
     const reply = await generateCoaching(messages, language);
     return Response.json(reply);

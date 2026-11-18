@@ -41,8 +41,9 @@ export function SafetyCard({ reply, pinned = false }: { reply: SafetyResponse; p
     : "bg-amber-50 ring-amber-300 text-amber-950";
   return (
     <div
-      // The in-chat card announces itself once; the pinned copy is a labelled region instead.
-      role={pinned ? "region" : "alert"}
+      // Either way it is announced once: the in-chat card normally, or the pinned panel that
+      // replaces it while the conversation is locked.
+      role="alert"
       aria-label={pinned ? "Support options" : undefined}
       dir={reply.language === "ur" ? "rtl" : "ltr"}
       lang={reply.language}

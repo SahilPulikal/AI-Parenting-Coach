@@ -144,7 +144,13 @@ export default function ChatInterface({
   const pinnedSafetyReply = messages.findLast(
     (m) => m.role === "coach" && (m.reply.type === "crisis" || m.reply.type === "uncertain"),
   );
-  const pinned = pinnedSafetyReply?.role === "coach" && pinnedSafetyReply.reply.type !== "coaching" ? pinnedSafetyReply.reply : null;
+  const pinned =
+    safetyLocked && pinnedSafetyReply?.role === "coach" && pinnedSafetyReply.reply.type !== "coaching"
+      ? pinnedSafetyReply.reply
+      : null;
+  // While locked, that reply is shown once, pinned below the chat, instead of also scrolling
+  // inside it (where it would repeat on short screens and be clipped).
+  const visibleMessages = pinned ? messages.filter((m) => m !== pinnedSafetyReply) : messages;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -192,7 +198,7 @@ export default function ChatInterface({
           </div>
         )}
 
-        {messages.map((m) => (
+        {visibleMessages.map((m) => (
           <MessageBubble key={m.id} message={m} />
         ))}
 
@@ -221,7 +227,11 @@ export default function ChatInterface({
         <div className="mx-4 space-y-2 sm:mx-8">
           {/* The guidance stays pinned here so it cannot scroll out of view. */}
           {pinned && (
-            <div className="max-h-[40vh] overflow-y-auto rounded-2xl">
+            // Capped so the chat stays usable; focusable so keyboard users can scroll a long list.
+            <div
+              tabIndex={0}
+              className="max-h-[40vh] overscroll-contain overflow-y-auto rounded-2xl focus-visible:outline-2 focus-visible:outline-teal-700"
+            >
               <SafetyCard reply={pinned} pinned />
             </div>
           )}

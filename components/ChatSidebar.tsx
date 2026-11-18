@@ -66,7 +66,7 @@ export default function ChatSidebar({
     <aside
       id="chat-history"
       aria-label="Chat history"
-      className={`fixed inset-y-0 left-0 z-40 overflow-hidden border-e border-stone-200 bg-surface shadow-xl transition-all duration-200 md:static md:z-auto md:shrink-0 md:translate-x-0 md:shadow-none ${
+      className={`fixed inset-y-0 left-0 z-40 overflow-hidden border-e border-stone-200 bg-surface shadow-xl transition-[transform,width] duration-200 md:static md:z-auto md:shrink-0 md:translate-x-0 md:shadow-none ${
         open ? "visible translate-x-0 md:w-68" : "invisible -translate-x-full md:w-0 md:border-e-0"
       }`}
     >

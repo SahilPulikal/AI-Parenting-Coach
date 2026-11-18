@@ -10,6 +10,7 @@ import { AIError, callModel, generateCoaching } from "@/lib/ai";
 import { POST } from "@/app/api/chat/route";
 import { hasUrduScript } from "@/lib/language";
 import { crisisReply, uncertainReply, unavailableReply } from "@/lib/safety-responses";
+import { english, romanUrdu, urdu } from "./fixtures/crisis-cases";
 
 const classifier = vi.mocked(callModel);
 const coaching = vi.mocked(generateCoaching);
@@ -67,6 +68,35 @@ describe("A-C. ordinary concerns reach the coach after screening", () => {
     expect(classifier).toHaveBeenCalledTimes(1);
     expect(coaching).toHaveBeenCalledTimes(1);
     expect(coaching.mock.calls[0][1]).toBe(language);
+  });
+});
+
+describe("a crisis message can never reach the coaching model", () => {
+  const all = [...english, ...urdu, ...romanUrdu];
+
+  it.each(all)("%s -> predefined %s reply, no classifier, no coaching", async (text, category) => {
+    const { status, body } = await send([user(text)]);
+    expect(status).toBe(200);
+    expect(body.type).toBe("crisis");
+    expect(body).toEqual(crisisReply(category, body.language));
+    expect(classifier).not.toHaveBeenCalled();
+    expect(coaching).not.toHaveBeenCalled();
+  });
+
+  it("holds even when the classifier would have said the message is safe (rules run first)", async () => {
+    classifier.mockResolvedValue(SAFE);
+    for (const [text] of all.slice(0, 20)) {
+      expect((await send([user(text)])).body.type).toBe("crisis");
+    }
+    expect(coaching).not.toHaveBeenCalled();
+  });
+
+  it("holds when the crisis sentence is the earliest of the last three parent messages", async () => {
+    for (const [text] of all) {
+      const { body } = await send([user(text), assistant("ok"), user("thanks"), assistant("ok"), user("and about homework?")]);
+      expect(body.type).toBe("crisis");
+    }
+    expect(coaching).not.toHaveBeenCalled();
   });
 });
 
