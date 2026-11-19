@@ -6,7 +6,10 @@ Repository: <https://github.com/SahilPulikal/AI-Parenting-Coach>
 
 Live Link to the deployed app: https://ai-parenting-coach.vercel.app/ 
 
-Demo video: https://youtu.be/2aK9cwyUIXI  
+Demo video: https://youtu.be/2aK9cwyUIXI 
+
+Screenshot:
+![alt text](screenshot.png)
 
 > **Not a medical, legal or crisis service.** Automated safety screening is imperfect and the server-side safety lock is **not tamper-proof**. See [Security, privacy and limitations](#9-security-privacy-and-limitations).
 
