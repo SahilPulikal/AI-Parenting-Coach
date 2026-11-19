@@ -4,7 +4,7 @@ A small web app where a parent describes a parenting concern in **English, Urdu 
 
 Repository: <https://github.com/SahilPulikal/AI-Parenting-Coach>
 
-> **Assessment project, not a medical, legal or crisis service.** Automated safety screening is imperfect and the server-side safety lock is **not tamper-proof**. See [Security, privacy and limitations](#9-security-privacy-and-limitations).
+> **Not a medical, legal or crisis service.** Automated safety screening is imperfect and the server-side safety lock is **not tamper-proof**. See [Security, privacy and limitations](#9-security-privacy-and-limitations).
 
 ## Contents
 
@@ -291,7 +291,6 @@ flowchart TD
 - Only the last 3 parent messages are screened. English and Urdu only; Roman Urdu detection is a word-list heuristic.
 - **Not implemented:** authentication, rate limiting (anyone who can reach the server can spend the API budget), a Content-Security-Policy, encryption of `localStorage`, server-side storage.
 - No country-specific emergency numbers; replies say "local emergency services".
-- `npm audit` reported 0 vulnerabilities when last run; re-run it.
 
 **Before production:** server-side conversation state for a tamper-resistant lock, authentication and rate limiting, a CSP, country-aware emergency resources, wider language support, broader automated browser tests, and a clinical/safety review of the rules and replies.
 
@@ -319,7 +318,6 @@ flowchart TD
 
 **Does history survive a refresh? Can it be deleted?** Yes to both: refresh restores it; delete one conversation or **Clear all history** removes it from storage.
 
-**What has not been verified?** Real-device and non-Edge browser behaviour, the missing-API-key path against a live server (covered by unit tests), and classifier behaviour beyond the sampled messages.
 
 ## 11. Quick reference
 
